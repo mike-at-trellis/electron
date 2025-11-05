@@ -157,6 +157,14 @@ export class MovementController {
   }
 
   /**
+   * Refresh the container's pixel position after a maze cell size change.
+   */
+  refreshPosition(): void {
+    const pos = this.maze.gridToPixel(this.gridX, this.gridY);
+    this.container.setPosition(pos.x, pos.y);
+  }
+
+  /**
    * Clean up tweens
    */
   destroy(): void {

@@ -30,6 +30,7 @@ export class BlobCharacter implements ICharacterRenderer {
   private direction: Direction = Direction.DOWN;
   private walkTween?: Phaser.Tweens.Tween;
   private bounceTween?: Phaser.Tweens.Tween;
+  private sparkleParticles?: Phaser.GameObjects.Particles.ParticleEmitter;
 
   constructor(scene: Phaser.Scene, cellSize: number, colorConfig: BlobColorConfig) {
     this.scene = scene;
@@ -55,6 +56,9 @@ export class BlobCharacter implements ICharacterRenderer {
 
     // Add all parts to container
     this.container.add([this.body, this.leftEye, this.rightEye, this.mouth]);
+
+    // Setup sparkle trail
+    this.setupSparkleTrail();
   }
 
   /**
@@ -139,6 +143,42 @@ export class BlobCharacter implements ICharacterRenderer {
     this.mouth.beginPath();
     this.mouth.arc(0, mouthY, mouthWidth, 0, Math.PI, false);
     this.mouth.strokePath();
+  }
+
+  /**
+   * Setup sparkle trail particle emitter
+   */
+  private setupSparkleTrail(): void {
+    // Create particle texture if it doesn't exist
+    const hasParticle = this.scene.textures.exists('particle');
+    if (!hasParticle) {
+      const g = this.scene.add.graphics();
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(2, 2, 2);
+      g.generateTexture('particle', 4, 4);
+      g.destroy();
+    }
+
+    // Create sparkle trail emitter
+    this.sparkleParticles = this.scene.add.particles(0, 0, 'particle', {
+      speed: { min: 10, max: 40 },
+      lifespan: { min: 300, max: 600 },
+      alpha: { start: 1, end: 0 },
+      scale: { start: 0.6, end: 0.1 },
+      gravityY: 0,
+      angle: { min: 0, max: 360 },
+      frequency: 80,
+      blendMode: 'ADD',
+      tint: [
+        this.colorConfig.bodyPrimary,
+        this.colorConfig.bodySecondary,
+        this.colorConfig.bodyHighlight,
+        0xffffff,
+      ],
+      follow: this.container,
+      followOffset: { x: 0, y: 0 },
+    });
+    this.sparkleParticles.setDepth(5); // Behind the character
   }
 
   /**
@@ -229,6 +269,29 @@ export class BlobCharacter implements ICharacterRenderer {
     if (this.bounceTween) {
       this.bounceTween.stop();
     }
+    if (this.sparkleParticles) {
+      this.sparkleParticles.destroy();
+    }
     this.container.destroy();
+  }
+
+  /**
+   * Resize this blob to a new cell size by redrawing its graphics.
+   */
+  public resizeForCellSize(newCellSize: number): void {
+    if (newCellSize <= 0 || newCellSize === this.cellSize) return;
+
+    // Destroy old sparkle particles
+    if (this.sparkleParticles) {
+      this.sparkleParticles.destroy();
+    }
+
+    this.cellSize = newCellSize;
+    this.drawBody();
+    this.drawEyes();
+    this.drawMouth();
+
+    // Recreate sparkle particles with new size
+    this.setupSparkleTrail();
   }
 }

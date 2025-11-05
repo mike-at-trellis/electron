@@ -86,6 +86,24 @@ export class Character {
   }
 
   /**
+   * Realign the character after a cell size change.
+   */
+  refreshPosition(): void {
+    this.movementController.refreshPosition();
+  }
+
+  /**
+   * Resize the character renderer for a new cell size (if supported) without losing state.
+   */
+  resizeForCellSize(newCellSize: number): void {
+    type Resizable = { resizeForCellSize: (size: number) => void };
+    const maybeResizable = this.renderer as unknown as Partial<Resizable>;
+    if (typeof maybeResizable.resizeForCellSize === 'function') {
+      maybeResizable.resizeForCellSize(newCellSize);
+    }
+  }
+
+  /**
    * Destroy the character
    */
   destroy(): void {

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { IMazeProvider } from '../providers/IMazeProvider';
+import * as Colors from './characters/ColorConstants';
 
 /**
  * Maze Configuration for skinnable appearance
@@ -31,17 +32,17 @@ export class Maze {
     this.config = {
       cellSize: config?.cellSize || 40,
       wallColors: config?.wallColors || [
-        0xff6b6b, // Red
-        0xffa500, // Orange
-        0xffff00, // Yellow
-        0x4ecdc4, // Turquoise
-        0x45b7d1, // Light blue
-        0x6c5ce7, // Purple
-        0xff85c0, // Pink
+        Colors.RED_CORAL,       // Red
+        Colors.ORANGE_BRIGHT,   // Orange
+        Colors.YELLOW,          // Yellow
+        Colors.TURQUOISE,       // Turquoise
+        Colors.LIGHT_BLUE_SKY,  // Light blue
+        Colors.DEEP_PURPLE,     // Purple
+        Colors.LIGHTER_PINK,    // Pink
       ],
-      pathColor: config?.pathColor || 0xf0f0f0, // Light gray path
-      exitColor: config?.exitColor || 0x00ff00, // Bright green for exit
-      startColor: config?.startColor || 0xffff00, // Yellow for start
+      pathColor: config?.pathColor || Colors.DARK_GRAY_PATH,  // Darker grey
+      exitColor: config?.exitColor || Colors.BRIGHT_GREEN,    // Bright green for exit
+      startColor: config?.startColor || Colors.DARK_GRAY_PATH, // Same as path
     };
 
     this.cellSize = this.config.cellSize;
@@ -97,7 +98,7 @@ export class Maze {
     this.graphics.fillRect(x, y, this.cellSize, this.cellSize);
 
     // Add a subtle border for better visibility
-    this.graphics.lineStyle(1, 0xffffff, 0.2);
+    this.graphics.lineStyle(1, Colors.WHITE, 0.2);
     this.graphics.strokeRect(x, y, this.cellSize, this.cellSize);
   }
 
@@ -126,6 +127,17 @@ export class Maze {
    */
   getCellSize(): number {
     return this.cellSize;
+  }
+
+  /**
+   * Update the cell size and re-render the maze.
+   */
+  setCellSize(newSize: number): void {
+    if (newSize <= 0) return;
+    if (this.cellSize !== newSize) {
+      this.cellSize = newSize;
+      this.render();
+    }
   }
 
   /**

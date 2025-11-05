@@ -33,7 +33,7 @@ export class FixedMazeProvider implements IMazeProvider {
       width: 16,
       height: 16,
       grid: grid,
-      startPosition: { x: 8, y: 8 }, // Center of the maze
+      startPosition: { x: 8, y: 7 }, // Center of the maze
       exitPosition: { x: 14, y: 15 }, // Near bottom-right corner
     };
   }

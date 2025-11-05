@@ -3,6 +3,7 @@ import { BlobCharacter, BlobColorConfig } from '../entities/characters/BlobChara
 import { UnicornCharacter, UnicornColorConfig } from '../entities/characters/UnicornCharacter';
 import { ALL_BLOB_PRESETS } from '../entities/characters/BlobColorPresets';
 import { ALL_UNICORN_PRESETS } from '../entities/characters/UnicornColorPresets';
+import { createRainbowText } from '../utils/TextUtils';
 
 type CharacterType = 'blob' | 'unicorn';
 
@@ -34,15 +35,13 @@ export class StartMenuScene extends Phaser.Scene {
     // Create rainbow gradient background
     this.createRainbowBackground();
 
-    // Title
-    const title = this.add.text(width / 2, height * 0.2, 'Rainbow Maze Adventure!', {
+    // Title with rainbow gradient
+    const title = createRainbowText(this, width / 2, height * 0.2, 'Madzia\'s Rainbow Maze Adventure!', {
       fontSize: '48px',
-      color: '#ffffff',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 6,
     });
-    title.setOrigin(0.5);
     title.setDepth(100);
 
     // Subtitle
@@ -400,7 +399,7 @@ export class StartMenuScene extends Phaser.Scene {
    * Handle window resize
    */
   private handleResize(): void {
-    // Could recreate UI elements here if needed
-    // For now, scene restart handles it
+    // Recreate UI for new size
+    this.scene.restart();
   }
 }

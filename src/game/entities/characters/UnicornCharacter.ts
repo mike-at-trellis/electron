@@ -256,4 +256,39 @@ export class UnicornCharacter implements ICharacterRenderer {
     }
     this.container.destroy();
   }
+
+  /**
+   * Resize and redraw the unicorn at a new cell size without replacing the container.
+   */
+  public resizeForCellSize(newCellSize: number): void {
+    if (newCellSize <= 0 || newCellSize === this.cellSize) return;
+
+    // Preserve direction for after redraw
+    const currentDirection = this.direction;
+
+    // Clean up old visual assets (keep container)
+    if (this.walkTween) { this.walkTween.stop(); this.walkTween = undefined; }
+    if (this.bounceTween) { this.bounceTween.stop(); this.bounceTween = undefined; }
+    if (this.particles) {
+      this.particles.destroy();
+    }
+    if (this.sprite) {
+      this.sprite.destroy();
+    }
+    if (this.textureKey && this.scene.textures.exists(this.textureKey)) {
+      this.scene.textures.remove(this.textureKey);
+    }
+
+    // Apply new size and rebuild
+    this.cellSize = newCellSize;
+    this.textureKey = `unicorn_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+    this.createTexture();
+    this.sprite = this.scene.add.sprite(0, 0, this.textureKey);
+    this.sprite.setOrigin(0.5, 0.5);
+    this.container.add(this.sprite);
+    this.setupHornSparkle();
+
+    // Reapply direction visual
+    this.setDirection(currentDirection);
+  }
 }

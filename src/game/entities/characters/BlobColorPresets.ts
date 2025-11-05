@@ -1,16 +1,17 @@
 import { BlobColorConfig } from './BlobCharacter';
+import * as Colors from './ColorConstants';
 
 /**
  * Pink Blob Color Scheme (Original)
  * Warm, friendly pink character
  */
 export const PinkBlobConfig: BlobColorConfig = {
-  bodyPrimary: 0xff69b4,    // Hot pink
-  bodySecondary: 0xff85c0,  // Lighter pink
-  bodyHighlight: 0xffffff,  // White highlight
-  eyeWhite: 0xffffff,       // White
-  eyePupil: 0x000000,       // Black
-  mouth: 0x000000,          // Black
+  bodyPrimary: Colors.HOT_PINK,       // Hot pink
+  bodySecondary: Colors.LIGHTER_PINK, // Lighter pink
+  bodyHighlight: Colors.WHITE,        // White highlight
+  eyeWhite: Colors.WHITE,             // White
+  eyePupil: Colors.BLACK,             // Black
+  mouth: Colors.BLACK,                // Black
 };
 
 /**
@@ -18,12 +19,38 @@ export const PinkBlobConfig: BlobColorConfig = {
  * Cool, calm blue character
  */
 export const BlueBlobConfig: BlobColorConfig = {
-  bodyPrimary: 0x4a90e2,    // Bright blue
-  bodySecondary: 0x7ab8f5,  // Lighter blue
-  bodyHighlight: 0xffffff,  // White highlight
-  eyeWhite: 0xffffff,       // White
-  eyePupil: 0x1a4d7a,       // Dark blue
-  mouth: 0x1a4d7a,          // Dark blue
+  bodyPrimary: Colors.BRIGHT_BLUE,    // Bright blue
+  bodySecondary: Colors.LIGHTER_BLUE, // Lighter blue
+  bodyHighlight: Colors.WHITE,        // White highlight
+  eyeWhite: Colors.WHITE,             // White
+  eyePupil: Colors.DARK_BLUE,         // Dark blue
+  mouth: Colors.DARK_BLUE,            // Dark blue
+};
+
+/**
+ * Green Blob Color Scheme
+ * Fresh, lively green character
+ */
+export const GreenBlobConfig: BlobColorConfig = {
+  bodyPrimary: Colors.EMERALD,        // Emerald green
+  bodySecondary: Colors.MINT_GREEN,   // Mint green
+  bodyHighlight: Colors.WHITE,        // White highlight
+  eyeWhite: Colors.WHITE,             // White
+  eyePupil: Colors.FOREST_GREEN,      // Forest green
+  mouth: Colors.FOREST_GREEN,         // Forest green
+};
+
+/**
+ * Purple Blob Color Scheme
+ * Mystical, enchanting purple character
+ */
+export const PurpleBlobConfig: BlobColorConfig = {
+  bodyPrimary: Colors.DEEP_PURPLE,    // Deep purple
+  bodySecondary: Colors.PURPLE,       // Medium purple
+  bodyHighlight: Colors.WHITE,        // White highlight
+  eyeWhite: Colors.WHITE,             // White
+  eyePupil: Colors.PURPLE_AMETHYST,   // Amethyst purple
+  mouth: Colors.PURPLE_AMETHYST,      // Amethyst purple
 };
 
 /**
@@ -32,4 +59,6 @@ export const BlueBlobConfig: BlobColorConfig = {
 export const ALL_BLOB_PRESETS: BlobColorConfig[] = [
   PinkBlobConfig,
   BlueBlobConfig,
+  GreenBlobConfig,
+  PurpleBlobConfig,
 ];

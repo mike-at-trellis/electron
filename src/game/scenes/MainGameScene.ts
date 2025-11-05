@@ -7,6 +7,9 @@ import { PinkBlobConfig } from '../entities/characters/BlobColorPresets';
 import { RainbowUnicornConfig } from '../entities/characters/UnicornColorPresets';
 import { UnicornCharacter, UnicornColorConfig } from '../entities/characters/UnicornCharacter';
 import { ICharacterRenderer } from '../entities/ICharacterRenderer';
+import { RandomMazeProvider } from '../providers/RandomMazeProvider';
+import { IMazeProvider } from '../providers/IMazeProvider';
+import { createRainbowText } from '../utils/TextUtils';
 
 type CharacterType = 'blob' | 'unicorn';
 
@@ -17,9 +20,11 @@ type CharacterType = 'blob' | 'unicorn';
 export class MainGameScene extends Phaser.Scene {
   private maze!: Maze;
   private character!: Character;
-  private mazeProvider!: FixedMazeProvider;
+  private mazeProvider!: IMazeProvider;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private timerText!: Phaser.GameObjects.Text;
+  private titleText!: Phaser.GameObjects.Container;
+  private instructionsText!: Phaser.GameObjects.Text;
   private startTime!: number;
   private gameWon: boolean = false;
   private visitedCells: Set<string> = new Set();
@@ -27,6 +32,10 @@ export class MainGameScene extends Phaser.Scene {
   private backgroundGraphics!: Phaser.GameObjects.Graphics;
   private characterType!: CharacterType;
   private characterColorConfig!: BlobColorConfig | UnicornColorConfig;
+  private baseTopUiSpace: number = 100;
+  private baseBottomUiSpace: number = 60;
+  private exitEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
+  private themeMusic?: Phaser.Sound.BaseSound;
 
   // Sound placeholder flags
   private moveSoundEnabled: boolean = true;
@@ -46,12 +55,23 @@ export class MainGameScene extends Phaser.Scene {
     this.gameWon = false;
     this.visitedCells.clear();
 
+    // Start theme music on loop (only if not already playing)
+    const existingMusic = this.sound.get('themeMusic');
+    if (!existingMusic || !existingMusic.isPlaying) {
+      this.themeMusic = this.sound.add('themeMusic', { loop: true, volume: 0.5 });
+      this.themeMusic.play();
+    } else {
+      this.themeMusic = existingMusic;
+    }
+
     // Create rainbow gradient background
     this.createRainbowBackground();
 
     // Initialize maze provider and create maze
-    this.mazeProvider = new FixedMazeProvider();
-    this.maze = new Maze(this, this.mazeProvider);
+    this.mazeProvider = new RandomMazeProvider(14, 14);
+    // Compute a cell size that fits the current viewport
+    const initialCellSize = this.getBestCellSize(this.cameras.main.width, this.cameras.main.height);
+    this.maze = new Maze(this, this.mazeProvider, { cellSize: initialCellSize });
 
     // Create UI elements
     this.createUI();
@@ -81,6 +101,9 @@ export class MainGameScene extends Phaser.Scene {
     // Center camera on maze
     this.centerCamera();
 
+    // Create a sparkling effect on the exit
+    this.createExitSparkle();
+
     // Listen for window resize
     this.scale.on('resize', this.handleResize, this);
   }
@@ -95,11 +118,60 @@ export class MainGameScene extends Phaser.Scene {
     // Update camera size
     this.cameras.main.setSize(width, height);
 
+    // If the optimal cell size changed, live-update maze and character without restarting
+    const targetCell = this.getBestCellSize(width, height);
+    if (targetCell !== this.maze.getCellSize()) {
+      this.maze.setCellSize(targetCell);
+      this.character.resizeForCellSize(targetCell);
+      this.character.refreshPosition();
+    }
+
     // Redraw background to fill new size
     this.createRainbowBackground();
 
+    // Reposition UI elements
+    if (this.titleText) {
+      this.titleText.setPosition(width / 2, 30);
+    }
+    if (this.timerText) {
+      this.timerText.setPosition(width / 2, 70);
+    }
+    if (this.instructionsText) {
+      this.instructionsText.setPosition(width / 2, height - 30);
+    }
+
+    // Update mini-map placement
+    if (this.miniMapGraphics) {
+      const miniMapSize = 150;
+      const miniMapX = width - miniMapSize - 20;
+      const miniMapY = 120;
+      (this.miniMapGraphics as any).miniMapX = miniMapX;
+      (this.miniMapGraphics as any).miniMapY = miniMapY;
+      (this.miniMapGraphics as any).miniMapSize = miniMapSize;
+      this.updateMiniMap();
+    }
+
     // Recenter maze
     this.centerCamera();
+
+    // Reposition exit sparkle to the new pixel location
+    this.updateExitSparklePosition();
+  }
+
+  /**
+   * Determine the best cell size to fit the maze into the current viewport.
+   */
+  private getBestCellSize(viewW: number, viewH: number): number {
+    const mazeData = this.mazeProvider.getMazeData();
+    const uiTop = this.baseTopUiSpace;
+    const uiBottom = this.baseBottomUiSpace;
+    const availableW = Math.max(1, Math.floor(viewW - 40)); // small side padding
+    const availableH = Math.max(1, Math.floor(viewH - (uiTop + uiBottom)));
+    const fitCell = Math.min(
+      Math.floor(availableW / mazeData.width),
+      Math.floor(availableH / mazeData.height)
+    );
+    return Math.max(20, fitCell); // enforce a minimum size for clarity
   }
 
   /**
@@ -142,22 +214,68 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   /**
+   * Create a very sparkly particle emitter at the maze exit.
+   */
+  private createExitSparkle(): void {
+    // Ensure particle texture exists (preload creates it)
+    if (!this.textures.exists('particle')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xffffff);
+      g.fillCircle(4, 4, 4);
+      g.generateTexture('particle', 8, 8);
+      g.destroy();
+    }
+
+    const exitPos = this.mazeProvider.getExitPosition();
+    const px = this.maze.gridToPixel(exitPos.x, exitPos.y);
+
+    // If already exists (e.g., after scene resume), destroy and recreate for clean config
+    if (this.exitEmitter) {
+      this.exitEmitter.destroy();
+      this.exitEmitter = undefined;
+    }
+
+    // A dense, bright sparkle with additive blending
+    this.exitEmitter = this.add.particles(px.x, px.y, 'particle', {
+      speed: { min: 20, max: 90 },
+      angle: { min: 0, max: 360 },
+      lifespan: { min: 600, max: 1200 },
+      quantity: 6,
+      frequency: 40,
+      scale: { start: 0.9, end: 0 },
+      alpha: { start: 1, end: 0 },
+      tint: [0x00ff88, 0x00ff00, 0xffffff],
+      gravityY: 0,
+      blendMode: 'ADD',
+    });
+    this.exitEmitter.setDepth(9); // Above maze tiles, below character
+  }
+
+  /**
+   * Update the exit sparkle position after resize/cell-size changes.
+   */
+  private updateExitSparklePosition(): void {
+    if (!this.exitEmitter) return;
+    const exitPos = this.mazeProvider.getExitPosition();
+    const px = this.maze.gridToPixel(exitPos.x, exitPos.y);
+    this.exitEmitter.setPosition(px.x, px.y);
+  }
+
+  /**
    * Create UI elements (timer, title, instructions)
    */
   private createUI(): void {
     const width = this.cameras.main.width;
 
-    // Title
-    const title = this.add.text(width / 2, 30, 'Rainbow Maze Adventure!', {
+    // Title with rainbow gradient
+    this.titleText = createRainbowText(this, width / 2, 30, 'Madzia\'s Rainbow Maze Adventure!', {
       fontSize: '32px',
-      color: '#ffffff',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 4,
     });
-    title.setOrigin(0.5);
-    title.setDepth(100);
-    title.setScrollFactor(0); // Stay fixed on screen
+    this.titleText.setDepth(100);
+    this.titleText.setScrollFactor(0);
 
     // Timer
     this.timerText = this.add.text(width / 2, 70, 'Time: 0s', {
@@ -171,16 +289,16 @@ export class MainGameScene extends Phaser.Scene {
     this.timerText.setScrollFactor(0); // Stay fixed on screen
 
     // Instructions
-    const instructions = this.add.text(width / 2, this.cameras.main.height - 30,
+    this.instructionsText = this.add.text(width / 2, this.cameras.main.height - 30,
       'Use Arrow Keys to move | Find the green exit!', {
       fontSize: '18px',
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 2,
     });
-    instructions.setOrigin(0.5);
-    instructions.setDepth(100);
-    instructions.setScrollFactor(0); // Stay fixed on screen
+    this.instructionsText.setOrigin(0.5);
+    this.instructionsText.setDepth(100);
+    this.instructionsText.setScrollFactor(0); // Stay fixed on screen
   }
 
   /**
@@ -426,9 +544,12 @@ export class MainGameScene extends Phaser.Scene {
     // Create celebration particles
     this.createCelebrationParticles();
 
-    // Add restart functionality
+    // Add restart functionality (generate a fresh random maze and keep character selection)
     this.input.keyboard!.once('keydown-SPACE', () => {
-      this.scene.restart();
+      this.scene.restart({
+        characterType: this.characterType,
+        characterColor: this.characterColorConfig,
+      });
     });
   }
 
@@ -464,24 +585,23 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   /**
-   * Play movement sound (placeholder)
+   * Play movement sound
    */
   private playMoveSound(): void {
     if (!this.moveSoundEnabled) return;
 
-    // Placeholder: In a real implementation, you would load and play actual sound files
-    // For now, we'll just log or use a simple beep if available
-    console.log('🔊 Move sound');
+    // Play move sound effect
+    this.sound.play('moveSound', { volume: 0.1 });
   }
 
   /**
-   * Play victory sound (placeholder)
+   * Play victory sound
    */
   private playVictorySound(): void {
     if (!this.victorySoundEnabled) return;
 
-    // Placeholder: In a real implementation, you would load and play actual sound files
-    console.log('🎉 Victory sound!');
+    // Play winner sound effect once
+    this.sound.play('winnerSound', { volume: 0.7 });
   }
 
   /**
@@ -495,8 +615,28 @@ export class MainGameScene extends Phaser.Scene {
     graphics.generateTexture('particle', 8, 8);
     graphics.destroy();
 
-    // In a real implementation, you would load sound files here:
-    // this.load.audio('moveSound', 'assets/sounds/move.mp3');
-    // this.load.audio('victorySound', 'assets/sounds/victory.mp3');
+    // Load theme music
+    this.load.audio('themeMusic', 'assets/sounds/theme.mp3');
+
+    // Load winner sound effect
+    this.load.audio('winnerSound', 'assets/sounds/winner.mp3');
+
+    // Load move sound effect
+    this.load.audio('moveSound', 'assets/sounds/move.mp3');
+  }
+
+  /**
+   * Clean up when scene shuts down
+   */
+  shutdown(): void {
+    // Stop and clean up theme music only if it exists and hasn't been destroyed
+    if (this.themeMusic && this.themeMusic.key) {
+      this.themeMusic.stop();
+      this.themeMusic.destroy();
+      this.themeMusic = undefined;
+    }
+
+    // Remove resize listener
+    this.scale.off('resize', this.handleResize, this);
   }
 }
