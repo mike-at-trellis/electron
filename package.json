@@ -1,12 +1,14 @@
 {
-  "name": "electron-typescript-app",
+  "name": "Playground",
   "version": "1.0.0",
-  "description": "TypeScript Node Electron app ready to build for PC or Mac",
+  "description": "Mike's Playground",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc && tsc -p tsconfig.renderer.json",
+    "build": "tsc && esbuild src/renderer.ts --bundle --outfile=renderer.js --sourcemap --platform=browser --external:electron",
+    "watch:main": "tsc --watch",
+    "watch:renderer": "esbuild src/renderer.ts --bundle --outfile=renderer.js --sourcemap --platform=browser --external:electron --watch",
     "start": "npm run build && electron .",
-    "dev": "npm run build && electron .",
+    "dev": "npm run build && concurrently \"npm run watch:main\" \"npm run watch:renderer\" \"electron .\"",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder --win",
@@ -20,19 +22,22 @@
     "app"
   ],
   "author": {
-    "name": "Your Name",
-    "email": "your.email@example.com"
+    "name": "Mike Luoma",
+    "email": "mike@luoma.co"
   },
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "concurrently": "^9.2.1",
     "electron": "^35.7.5",
     "electron-builder": "^24.9.1",
+    "electron-reloader": "^1.2.3",
+    "esbuild": "^0.25.12",
     "typescript": "^5.3.0"
   },
   "build": {
-    "appId": "com.electron.app",
-    "productName": "ElectronApp",
+    "appId": "com.luoma.app",
+    "productName": "Playground",
     "directories": {
       "output": "release"
     },
@@ -40,6 +45,7 @@
       "dist/**/*",
       "index.html",
       "renderer.js",
+      "renderer.js.map",
       "package.json"
     ],
     "mac": {
@@ -62,5 +68,8 @@
       ],
       "category": "Utility"
     }
+  },
+  "dependencies": {
+    "phaser": "^3.90.0"
   }
 }

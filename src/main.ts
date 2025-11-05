@@ -1,6 +1,16 @@
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 
+// Enable hot reloading in development
+try {
+  require('electron-reloader')(module, {
+    debug: true,
+    watchRenderer: true
+  });
+} catch (_) {
+  // electron-reloader not available in production
+}
+
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
@@ -17,10 +27,8 @@ function createWindow(): void {
   // Load the index.html file
   mainWindow.loadFile(path.join(__dirname, '../index.html'));
 
-  // Open DevTools in development
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.webContents.openDevTools();
-  }
+  // Open DevTools for debugging
+  mainWindow.webContents.openDevTools();
 
   mainWindow.on('closed', () => {
     mainWindow = null;

@@ -2,10 +2,13 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "lib": ["ES2020", "DOM"],
-    "outDir": "."
+    "outDir": ".",
+    "module": "ES2020",
+    "moduleResolution": "node"
   },
   "include": [
-    "src/renderer.ts"
+    "src/renderer.ts",
+    "src/game/**/*.ts"
   ],
   "exclude": [
     "node_modules"
