@@ -8,6 +8,8 @@ A cross-platform desktop application built with Electron and TypeScript, ready t
 - 📘 TypeScript for type safety
 - 🏗️ electron-builder for creating distributable packages
 - 🎨 Modern UI with gradient styling
+- 🔒 Secure context isolation with preload script
+- ✅ Production-ready with security best practices
 
 ## Prerequisites
 
@@ -65,11 +67,21 @@ Built applications will be available in the `release` directory.
 electron/
 ├── src/
 │   ├── main.ts         # Main process (Electron)
+│   ├── preload.ts      # Preload script (secure bridge)
 │   └── renderer.ts     # Renderer process
 ├── index.html          # Main window HTML
 ├── package.json        # Project dependencies and build config
-└── tsconfig.json       # TypeScript configuration
+├── tsconfig.json       # TypeScript configuration (main & preload)
+└── tsconfig.renderer.json  # TypeScript configuration (renderer)
 ```
+
+## Security
+
+This app follows Electron security best practices:
+- Context isolation is enabled
+- Node integration is disabled in the renderer
+- A preload script safely exposes only necessary APIs
+- Updated to Electron 35.7.5 with latest security patches
 
 ## Platform-specific Notes
 
