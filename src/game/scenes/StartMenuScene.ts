@@ -23,6 +23,10 @@ export class StartMenuScene extends Phaser.Scene {
   private startButton!: Phaser.GameObjects.Container;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private colorRowContainer!: Phaser.GameObjects.Container;
+  private difficulty: number = 1; // 0=Easy, 1=Medium, 2=Hard, 3=Expert
+  private sliderHandle?: Phaser.GameObjects.Graphics;
+  private sliderTrack?: Phaser.GameObjects.Graphics;
+  private difficultyText?: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: 'StartMenuScene' });
@@ -53,6 +57,9 @@ export class StartMenuScene extends Phaser.Scene {
     });
     subtitle.setOrigin(0.5);
     subtitle.setDepth(100);
+
+    // Create difficulty slider
+    this.createDifficultySlider();
 
     // Create character type selection (first row)
     this.createCharacterTypeSelection();
@@ -103,6 +110,148 @@ export class StartMenuScene extends Phaser.Scene {
     graphics.fillRect(0, 0, width, height);
 
     graphics.setDepth(-1);
+  }
+
+  /**
+   * Get maze size based on difficulty level
+   */
+  private getDifficultyName(): string {
+    const names = ['Easy', 'Medium', 'Hard', 'Expert'];
+    return names[this.difficulty] || 'Medium';
+  }
+
+  /**
+   * Create difficulty slider
+   */
+  private createDifficultySlider(): void {
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+    const sliderY = height * 0.85;
+    const sliderWidth = 300;
+    const sliderX = width / 2 - sliderWidth / 2;
+
+    // Slider label
+    const sliderLabel = this.add.text(width / 2, sliderY - 40, 'Difficulty', {
+      fontSize: '20px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    });
+    sliderLabel.setOrigin(0.5);
+    sliderLabel.setDepth(100);
+
+    // Slider track
+    this.sliderTrack = this.add.graphics();
+    this.sliderTrack.lineStyle(4, 0xffffff, 1);
+    this.sliderTrack.strokeRect(sliderX, sliderY - 2, sliderWidth, 4);
+    this.sliderTrack.setDepth(100);
+
+    // Difficulty labels (clickable)
+    const labels = ['Easy', 'Medium', 'Hard', 'Expert'];
+    const labelSpacing = sliderWidth / 3;
+    labels.forEach((label, index) => {
+      const labelX = sliderX + index * labelSpacing;
+      const labelText = this.add.text(labelX, sliderY + 18, label, {
+        fontSize: '18px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 2,
+      });
+      labelText.setOrigin(0.5);
+      labelText.setDepth(100);
+      labelText.setInteractive({ useHandCursor: true });
+
+      // Click label to set difficulty
+      labelText.on('pointerdown', () => {
+        this.difficulty = index;
+        const snapX = sliderX + (this.difficulty * labelSpacing);
+        this.sliderHandle!.setPosition(snapX, sliderY);
+        this.updateDifficultyDisplay();
+      });
+
+      // Hover effect
+      labelText.on('pointerover', () => {
+        labelText.setScale(1.1);
+      });
+      labelText.on('pointerout', () => {
+        labelText.setScale(1);
+      });
+    });
+
+    // Slider handle
+    const handleRadius = 12;
+    this.sliderHandle = this.add.graphics();
+    this.sliderHandle.fillStyle(0x4ecdc4, 1);
+    this.sliderHandle.fillCircle(0, 0, handleRadius);
+    this.sliderHandle.lineStyle(3, 0xffffff, 1);
+    this.sliderHandle.strokeCircle(0, 0, handleRadius);
+    this.sliderHandle.setDepth(101);
+
+    // Position handle based on current difficulty
+    const handleX = sliderX + (this.difficulty * labelSpacing);
+    this.sliderHandle.setPosition(handleX, sliderY);
+
+    // Difficulty text
+    this.difficultyText = this.add.text(width / 2, sliderY - 15, this.getDifficultyName(), {
+      fontSize: '18px',
+      color: '#ffd700',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    this.difficultyText.setOrigin(0.5);
+    this.difficultyText.setDepth(100);
+
+    // Make handle interactive
+    this.sliderHandle.setInteractive(
+      new Phaser.Geom.Circle(0, 0, handleRadius),
+      Phaser.Geom.Circle.Contains
+    );
+
+    // Store slider info on the handle for event handlers
+    (this.sliderHandle as any).sliderX = sliderX;
+    (this.sliderHandle as any).sliderY = sliderY;
+    (this.sliderHandle as any).sliderWidth = sliderWidth;
+    (this.sliderHandle as any).labelSpacing = labelSpacing;
+
+    // Drag events
+    this.input.setDraggable(this.sliderHandle);
+
+    this.input.on('drag', (_pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Graphics, dragX: number) => {
+      if (gameObject !== this.sliderHandle) return;
+
+      const sliderInfo = gameObject as any;
+      const clampedX = Phaser.Math.Clamp(dragX, sliderInfo.sliderX, sliderInfo.sliderX + sliderInfo.sliderWidth);
+      gameObject.setPosition(clampedX, sliderInfo.sliderY);
+
+      // Snap to nearest difficulty level
+      const normalizedPos = (clampedX - sliderInfo.sliderX) / sliderInfo.sliderWidth;
+      const newDifficulty = Math.round(normalizedPos * 3);
+
+      if (newDifficulty !== this.difficulty) {
+        this.difficulty = newDifficulty;
+        this.updateDifficultyDisplay();
+      }
+    });
+
+    this.input.on('dragend', (_pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Graphics) => {
+      if (gameObject !== this.sliderHandle) return;
+
+      // Snap handle to exact position
+      const sliderInfo = gameObject as any;
+      const snapX = sliderInfo.sliderX + (this.difficulty * sliderInfo.labelSpacing);
+      gameObject.setPosition(snapX, sliderInfo.sliderY);
+    });
+  }
+
+  /**
+   * Update the difficulty display text
+   */
+  private updateDifficultyDisplay(): void {
+    if (this.difficultyText) {
+      this.difficultyText.setText(this.getDifficultyName());
+    }
   }
 
   /**
@@ -268,7 +417,7 @@ export class StartMenuScene extends Phaser.Scene {
     buttonBg.strokeRoundedRect(-100, -30, 200, 60, 15);
 
     // Button text
-    const buttonText = this.add.text(0, 0, 'Start Game', {
+    const buttonText = this.add.text(0, 0, 'Start', {
       fontSize: '28px',
       color: '#ffffff',
       fontStyle: 'bold',
@@ -299,8 +448,8 @@ export class StartMenuScene extends Phaser.Scene {
     // Pulsing animation
     this.tweens.add({
       targets: this.startButton,
-      scaleX: 1.05,
-      scaleY: 1.05,
+      scaleX: 1.15,
+      scaleY: 1.15,
       duration: 800,
       yoyo: true,
       repeat: -1,
@@ -354,10 +503,11 @@ export class StartMenuScene extends Phaser.Scene {
       : ALL_UNICORN_PRESETS;
     const selectedColorConfig = colorPresets[this.selectedColorIndex];
 
-    // Start MainGameScene with selected character type and color
+    // Start MainGameScene with selected character type, color, and difficulty
     this.scene.start('MainGameScene', {
       characterType: this.selectedCharacterType,
-      characterColor: selectedColorConfig
+      characterColor: selectedColorConfig,
+      difficulty: this.difficulty
     });
   }
 

@@ -31,6 +31,7 @@ export class BlobCharacter implements ICharacterRenderer {
   private walkTween?: Phaser.Tweens.Tween;
   private bounceTween?: Phaser.Tweens.Tween;
   private sparkleParticles?: Phaser.GameObjects.Particles.ParticleEmitter;
+  private baseSparkleFrequency: number = 80;
 
   constructor(scene: Phaser.Scene, cellSize: number, colorConfig: BlobColorConfig) {
     this.scene = scene;
@@ -165,7 +166,7 @@ export class BlobCharacter implements ICharacterRenderer {
       lifespan: { min: 300, max: 600 },
       alpha: { start: 1, end: 0 },
       scale: { start: 0.6, end: 0.1 },
-      gravityY: 0,
+      gravityY: 1,
       angle: { min: 0, max: 360 },
       frequency: 80,
       blendMode: 'ADD',
@@ -187,6 +188,18 @@ export class BlobCharacter implements ICharacterRenderer {
   setDirection(direction: Direction): void {
     this.direction = direction;
     this.drawEyes(); // Eyes look in the direction of movement
+  }
+
+  /**
+   * Set sparkle/particle effect intensity
+   * @param multiplier - Intensity multiplier (1 = normal, 2 = double, etc.)
+   */
+  setSparkleIntensity(multiplier: number): void {
+    if (!this.sparkleParticles) return;
+
+    // Adjust frequency (lower = more frequent particles)
+    const newFrequency = this.baseSparkleFrequency / multiplier;
+    this.sparkleParticles.setFrequency(newFrequency);
   }
 
   /**

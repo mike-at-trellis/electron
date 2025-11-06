@@ -22,13 +22,14 @@ export class MainGameScene extends Phaser.Scene {
   private character!: Character;
   private mazeProvider!: IMazeProvider;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private timerText!: Phaser.GameObjects.Text;
   private titleText!: Phaser.GameObjects.Container;
   private instructionsText!: Phaser.GameObjects.Text;
   private startTime!: number;
   private gameWon: boolean = false;
   private visitedCells: Set<string> = new Set();
   private miniMapGraphics!: Phaser.GameObjects.Graphics;
+  private miniMapBackground!: Phaser.GameObjects.Graphics;
+  private miniMapTitle!: Phaser.GameObjects.Text;
   private backgroundGraphics!: Phaser.GameObjects.Graphics;
   private characterType!: CharacterType;
   private characterColorConfig!: BlobColorConfig | UnicornColorConfig;
@@ -41,14 +42,24 @@ export class MainGameScene extends Phaser.Scene {
   private moveSoundEnabled: boolean = true;
   private victorySoundEnabled: boolean = true;
 
+  // Double-tap state
+  private lastKeyPressed: Direction | null = null;
+  private lastKeyPressTime: number = 0;
+  private doubleTapThreshold: number = 300; // milliseconds
+  private autoMoveDirection: Direction | null = null;
+
+  // Difficulty slider
+  private difficulty: number = 1; // 0=Easy, 1=Medium, 2=Hard, 3=Expert
+
   constructor() {
     super({ key: 'MainGameScene' });
   }
 
-  init(data: { characterType?: CharacterType; characterColor?: BlobColorConfig }): void {
+  init(data: { characterType?: CharacterType; characterColor?: BlobColorConfig; difficulty?: number }): void {
     // Get character type and color from scene data, or use defaults
     this.characterType = data.characterType || 'blob';
     this.characterColorConfig = data.characterColor || (this.characterType === 'blob' ? PinkBlobConfig : RainbowUnicornConfig);
+    this.difficulty = data.difficulty !== undefined ? data.difficulty : 1;
   }
 
   create(): void {
@@ -68,7 +79,8 @@ export class MainGameScene extends Phaser.Scene {
     this.createRainbowBackground();
 
     // Initialize maze provider and create maze
-    this.mazeProvider = new RandomMazeProvider(14, 14);
+    const mazeSize = this.getMazeSizeFromDifficulty();
+    this.mazeProvider = new RandomMazeProvider(mazeSize, mazeSize);
     // Compute a cell size that fits the current viewport
     const initialCellSize = this.getBestCellSize(this.cameras.main.width, this.cameras.main.height);
     this.maze = new Maze(this, this.mazeProvider, { cellSize: initialCellSize });
@@ -133,9 +145,6 @@ export class MainGameScene extends Phaser.Scene {
     if (this.titleText) {
       this.titleText.setPosition(width / 2, 30);
     }
-    if (this.timerText) {
-      this.timerText.setPosition(width / 2, 70);
-    }
     if (this.instructionsText) {
       this.instructionsText.setPosition(width / 2, height - 30);
     }
@@ -145,6 +154,19 @@ export class MainGameScene extends Phaser.Scene {
       const miniMapSize = 150;
       const miniMapX = width - miniMapSize - 20;
       const miniMapY = 120;
+
+      // Update minimap background position
+      if (this.miniMapBackground) {
+        this.miniMapBackground.clear();
+        this.miniMapBackground.fillStyle(0x000000, 0.5);
+        this.miniMapBackground.fillRoundedRect(miniMapX - 5, miniMapY - 5, miniMapSize + 10, miniMapSize + 10, 5);
+      }
+
+      // Update minimap title position
+      if (this.miniMapTitle) {
+        this.miniMapTitle.setPosition(miniMapX + miniMapSize / 2, miniMapY - 20);
+      }
+
       (this.miniMapGraphics as any).miniMapX = miniMapX;
       (this.miniMapGraphics as any).miniMapY = miniMapY;
       (this.miniMapGraphics as any).miniMapSize = miniMapSize;
@@ -172,6 +194,14 @@ export class MainGameScene extends Phaser.Scene {
       Math.floor(availableH / mazeData.height)
     );
     return Math.max(20, fitCell); // enforce a minimum size for clarity
+  }
+
+  /**
+   * Get maze size based on difficulty level
+   */
+  private getMazeSizeFromDifficulty(): number {
+    const sizes = [10, 14, 18, 22]; // Easy, Medium, Hard, Expert
+    return sizes[this.difficulty] || 14;
   }
 
   /**
@@ -277,17 +307,6 @@ export class MainGameScene extends Phaser.Scene {
     this.titleText.setDepth(100);
     this.titleText.setScrollFactor(0);
 
-    // Timer
-    this.timerText = this.add.text(width / 2, 70, 'Time: 0s', {
-      fontSize: '24px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 3,
-    });
-    this.timerText.setOrigin(0.5);
-    this.timerText.setDepth(100);
-    this.timerText.setScrollFactor(0); // Stay fixed on screen
-
     // Instructions
     this.instructionsText = this.add.text(width / 2, this.cameras.main.height - 30,
       'Use Arrow Keys to move | Find the green exit!', {
@@ -310,21 +329,21 @@ export class MainGameScene extends Phaser.Scene {
     const miniMapY = 120;
 
     // Background for mini-map
-    const bg = this.add.graphics();
-    bg.fillStyle(0x000000, 0.5);
-    bg.fillRoundedRect(miniMapX - 5, miniMapY - 5, miniMapSize + 10, miniMapSize + 10, 5);
-    bg.setDepth(99);
-    bg.setScrollFactor(0); // Stay fixed on screen
+    this.miniMapBackground = this.add.graphics();
+    this.miniMapBackground.fillStyle(0x000000, 0.5);
+    this.miniMapBackground.fillRoundedRect(miniMapX - 5, miniMapY - 5, miniMapSize + 10, miniMapSize + 10, 5);
+    this.miniMapBackground.setDepth(99);
+    this.miniMapBackground.setScrollFactor(0); // Stay fixed on screen
 
     // Mini-map title
-    const miniMapTitle = this.add.text(miniMapX + miniMapSize / 2, miniMapY - 20, 'Map', {
+    this.miniMapTitle = this.add.text(miniMapX + miniMapSize / 2, miniMapY - 20, 'Map', {
       fontSize: '16px',
       color: '#ffffff',
       fontStyle: 'bold',
     });
-    miniMapTitle.setOrigin(0.5);
-    miniMapTitle.setDepth(100);
-    miniMapTitle.setScrollFactor(0); // Stay fixed on screen
+    this.miniMapTitle.setOrigin(0.5);
+    this.miniMapTitle.setDepth(100);
+    this.miniMapTitle.setScrollFactor(0); // Stay fixed on screen
 
     // Mini-map graphics
     this.miniMapGraphics = this.add.graphics();
@@ -412,33 +431,71 @@ export class MainGameScene extends Phaser.Scene {
    * Handle input and update game state
    */
   update(): void {
-    if (this.gameWon || this.character.getIsMoving()) {
+    if (this.gameWon) {
       return;
     }
 
-    // Handle arrow key input
-    if (this.cursors.up.isDown) {
-      if (this.character.move(Direction.UP, () => this.onMoveComplete())) {
+    // Handle auto-move mode (double-tap continuous movement)
+    if (this.autoMoveDirection !== null && !this.character.getIsMoving()) {
+      // Use 75ms duration (2x speed of normal 150ms)
+      const moved = this.character.move(this.autoMoveDirection, () => this.onAutoMoveComplete(), 75);
+      if (moved) {
         this.playMoveSound();
+      } else {
+        // Hit a wall, stop auto-move
+        this.autoMoveDirection = null;
+        this.character.getRenderer().setSparkleIntensity(1);
       }
-    } else if (this.cursors.down.isDown) {
-      if (this.character.move(Direction.DOWN, () => this.onMoveComplete())) {
-        this.playMoveSound();
-      }
-    } else if (this.cursors.left.isDown) {
-      if (this.character.move(Direction.LEFT, () => this.onMoveComplete())) {
-        this.playMoveSound();
-      }
-    } else if (this.cursors.right.isDown) {
-      if (this.character.move(Direction.RIGHT, () => this.onMoveComplete())) {
-        this.playMoveSound();
-      }
+      return;
     }
 
-    // Update timer
-    if (!this.gameWon) {
-      const elapsedSeconds = Math.floor((Date.now() - this.startTime) / 1000);
-      this.timerText.setText(`Time: ${elapsedSeconds}s`);
+    // Don't process new input while character is moving or in auto-move
+    if (this.character.getIsMoving()) {
+      return;
+    }
+
+    // Detect key presses for double-tap
+    const currentTime = Date.now();
+    let pressedDirection: Direction | null = null;
+
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.up!)) {
+      pressedDirection = Direction.UP;
+    } else if (Phaser.Input.Keyboard.JustDown(this.cursors.down!)) {
+      pressedDirection = Direction.DOWN;
+    } else if (Phaser.Input.Keyboard.JustDown(this.cursors.left!)) {
+      pressedDirection = Direction.LEFT;
+    } else if (Phaser.Input.Keyboard.JustDown(this.cursors.right!)) {
+      pressedDirection = Direction.RIGHT;
+    }
+
+    // Process key press
+    if (pressedDirection !== null) {
+      // Cancel auto-move if any key is pressed
+      if (this.autoMoveDirection !== null) {
+        this.autoMoveDirection = null;
+        this.character.getRenderer().setSparkleIntensity(1);
+        this.lastKeyPressed = null;
+        return;
+      }
+
+      // Check for double-tap
+      const isDoubleTap =
+        pressedDirection === this.lastKeyPressed &&
+        (currentTime - this.lastKeyPressTime) < this.doubleTapThreshold;
+
+      if (isDoubleTap) {
+        // Enter auto-move mode
+        this.autoMoveDirection = pressedDirection;
+        this.character.getRenderer().setSparkleIntensity(100);
+        this.lastKeyPressed = null; // Reset to prevent triple-tap
+      } else {
+        // Single press - move once
+        if (this.character.move(pressedDirection, () => this.onMoveComplete())) {
+          this.playMoveSound();
+        }
+        this.lastKeyPressed = pressedDirection;
+        this.lastKeyPressTime = currentTime;
+      }
     }
   }
 
@@ -456,6 +513,25 @@ export class MainGameScene extends Phaser.Scene {
     if (currentPos.x === exitPos.x && currentPos.y === exitPos.y) {
       this.handleVictory();
     }
+  }
+
+  /**
+   * Called when character completes a move in auto-move mode
+   */
+  private onAutoMoveComplete(): void {
+    const currentPos = this.character.getGridPosition();
+    const exitPos = this.mazeProvider.getExitPosition();
+
+    // Mark cell as visited
+    this.markCellVisited(currentPos.x, currentPos.y);
+
+    // Check for victory
+    if (currentPos.x === exitPos.x && currentPos.y === exitPos.y) {
+      this.autoMoveDirection = null; // Stop auto-move
+      this.character.getRenderer().setSparkleIntensity(1);
+      this.handleVictory();
+    }
+    // Auto-move will continue in the next update cycle if not at exit
   }
 
   /**
@@ -544,11 +620,12 @@ export class MainGameScene extends Phaser.Scene {
     // Create celebration particles
     this.createCelebrationParticles();
 
-    // Add restart functionality (generate a fresh random maze and keep character selection)
+    // Add restart functionality (generate a fresh random maze and keep character selection and difficulty)
     this.input.keyboard!.once('keydown-SPACE', () => {
       this.scene.restart({
         characterType: this.characterType,
         characterColor: this.characterColorConfig,
+        difficulty: this.difficulty,
       });
     });
   }

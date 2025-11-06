@@ -28,7 +28,7 @@ function createWindow(): void {
   mainWindow.loadFile(path.join(__dirname, '../index.html'));
 
   // Open DevTools for debugging
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
 
   mainWindow.on('closed', () => {
     mainWindow = null;

@@ -38,9 +38,10 @@ export class Character {
    * Move the character in a direction
    * @param direction - Direction to move
    * @param onComplete - Callback when movement completes
+   * @param duration - Duration of the movement animation in milliseconds (default: 150)
    * @returns true if move succeeded, false if blocked by wall
    */
-  move(direction: Direction, onComplete?: () => void): boolean {
+  move(direction: Direction, onComplete?: () => void, duration: number = 150): boolean {
     return this.movementController.move(
       direction,
       (dir) => {
@@ -58,7 +59,8 @@ export class Character {
       (dir, baseX, baseY) => {
         // Play bounce animation when blocked by wall
         this.renderer.playBounceAnimation(dir, baseX, baseY);
-      }
+      },
+      duration
     );
   }
 
@@ -83,6 +85,13 @@ export class Character {
    */
   getIsMoving(): boolean {
     return this.movementController.isMoving();
+  }
+
+  /**
+   * Get the character renderer for accessing visual effects
+   */
+  getRenderer(): ICharacterRenderer {
+    return this.renderer;
   }
 
   /**

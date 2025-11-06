@@ -36,6 +36,12 @@ export interface ICharacterRenderer {
   playBounceAnimation(direction: Direction, baseX: number, baseY: number): void;
 
   /**
+   * Set sparkle/particle effect intensity
+   * @param multiplier - Intensity multiplier (1 = normal, 2 = double, etc.)
+   */
+  setSparkleIntensity(multiplier: number): void;
+
+  /**
    * Clean up resources
    */
   destroy(): void;

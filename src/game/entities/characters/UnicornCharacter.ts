@@ -34,6 +34,7 @@ export class UnicornCharacter implements ICharacterRenderer {
   private walkTween?: Phaser.Tweens.Tween;
   private bounceTween?: Phaser.Tweens.Tween;
   private particles!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private baseSparkleFrequency: number = 60;
 
   // Relative horn position within the sprite texture (set during draw)
   private hornOffsetX: number = 0;
@@ -152,7 +153,8 @@ export class UnicornCharacter implements ICharacterRenderer {
       lifespan: { min: 400, max: 800 },
       alpha: { start: 1, end: 0 },
       scale: { start: 0.5, end: 0 },
-      gravityY: 0,
+      gravityY: 2,
+      gravityX: 2,
       angle: { min: -40, max: 40 },
       frequency: 60,
       blendMode: 'ADD',
@@ -183,6 +185,18 @@ export class UnicornCharacter implements ICharacterRenderer {
         this.sprite.setAngle(6);
         break;
     }
+  }
+
+  /**
+   * Set sparkle/particle effect intensity
+   * @param multiplier - Intensity multiplier (1 = normal, 2 = double, etc.)
+   */
+  setSparkleIntensity(multiplier: number): void {
+    if (!this.particles) return;
+
+    // Adjust frequency (lower = more frequent particles)
+    const newFrequency = this.baseSparkleFrequency / multiplier;
+    this.particles.setFrequency(newFrequency);
   }
 
   playWalkAnimation(): void {

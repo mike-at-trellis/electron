@@ -48,13 +48,15 @@ export class MovementController {
    * @param onMoveStart - Callback when movement starts (for visual direction update)
    * @param onMoveComplete - Callback when movement completes
    * @param onBlocked - Callback when movement is blocked by a wall (receives direction and current pixel position)
+   * @param duration - Duration of the movement animation in milliseconds (default: 150)
    * @returns true if move succeeded, false if blocked
    */
   move(
     direction: Direction,
     onMoveStart?: (direction: Direction) => void,
     onMoveComplete?: () => void,
-    onBlocked?: (direction: Direction, baseX: number, baseY: number) => void
+    onBlocked?: (direction: Direction, baseX: number, baseY: number) => void,
+    duration: number = 150
   ): boolean {
     if (this.isMovingFlag) {
       return false;
@@ -112,7 +114,7 @@ export class MovementController {
       targets: this.container,
       x: newPos.x,
       y: newPos.y,
-      duration: 150,
+      duration: duration,
       ease: 'Sine.easeInOut',
       onComplete: () => {
         this.isMovingFlag = false;
